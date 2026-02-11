@@ -64,7 +64,7 @@ const CONFIG = {
 
     // ==================== ABOUT SECTION ====================
     about: {
-        avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop&crop=face",
+        avatar: "image.png",
         subtitle: "Who Am I?",
         bio: "I'm a passionate BCA student with a deep love for technology and innovation. Currently pursuing my Bachelor's in Computer Applications, I specialize in full-stack web development, creating responsive and dynamic web applications. My journey in tech started with curiosity and has evolved into a full-fledged passion for building digital solutions that make a difference.",
         bioExtended: "Beyond coding, I'm also a content creator and vlogger, sharing my tech journey with the world. I believe in continuous learning, community building, and staying updated with the latest technologies. When I'm not coding, you'll find me creating YouTube videos, exploring new frameworks, or contributing to open-source projects.",
@@ -547,3 +547,4 @@ const CONFIG = {
 if (typeof module !== 'undefined' && module.exports) {
     module.exports = CONFIG;
 }
+
