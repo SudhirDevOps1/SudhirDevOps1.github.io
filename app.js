@@ -988,36 +988,104 @@ class PortfolioApp {
     }
 
     // ==================== CONTACT FORM ====================
-    initContactForm() {
-        const form = document.getElementById('contact-form');
-        form?.addEventListener('submit', async (e) => {
-            e.preventDefault();
+    // initContactForm() {
+    //     const form = document.getElementById('contact-form');
+    //     form?.addEventListener('submit', async (e) => {
+    //         e.preventDefault();
 
-            const btn = form.querySelector('.submit-btn');
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
-            btn.disabled = true;
+    //         const btn = form.querySelector('.submit-btn');
+    //         const originalText = btn.innerHTML;
+    //         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+    //         btn.disabled = true;
 
-            // Simulate sending
-            await new Promise(resolve => setTimeout(resolve, 2000));
+    //         // Simulate sending
+    //         await new Promise(resolve => setTimeout(resolve, 2000));
 
-            const formData = new FormData(form);
-            const data = Object.fromEntries(formData);
+    //         const formData = new FormData(form);
+    //         const data = Object.fromEntries(formData);
 
-            btn.innerHTML = '<i class="fas fa-check"></i> Message Sent!';
-            btn.style.background = 'linear-gradient(135deg, #00ff88, #00f5ff)';
+    //         btn.innerHTML = '<i class="fas fa-check"></i> Message Sent!';
+    //         btn.style.background = 'linear-gradient(135deg, #00ff88, #00f5ff)';
 
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.style.background = '';
-                btn.disabled = false;
+    //         setTimeout(() => {
+    //             btn.innerHTML = originalText;
+    //             btn.style.background = '';
+    //             btn.disabled = false;
+    //             form.reset();
+    //         }, 3000);
+
+    //         console.log('Form submitted:', data);
+    //     });
+    // }
+
+    // ==================== CONTACT FORM ====================
+initContactForm() {
+    const form = document.getElementById('contact-form');
+    const messageDiv = document.getElementById('form-message');
+
+    if (!form) return;
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault(); // पेज को रिफ्रेश होने से रोकें
+
+        const btn = form.querySelector('.submit-btn');
+        const originalText = btn.innerHTML;
+
+        // बटन को "लोडिंग" स्टेट में करें
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        btn.disabled = true;
+
+        // फॉर्म डेटा इकट्ठा करें
+        const formData = new FormData(form);
+
+        try {
+            // FormZero पर डेटा भेजें
+            const response = await fetch(form.action, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                // ✅ सफलतापूर्वक भेजा गया
+                if (messageDiv) {
+                    messageDiv.style.display = 'block';
+                }
+
+                // फॉर्म खाली करें (Reset)
                 form.reset();
-            }, 3000);
 
-            console.log('Form submitted:', data);
-        });
-    }
+                // बटन को सफलता वाला स्टेट दिखाएं
+                btn.innerHTML = '<i class="fas fa-check"></i> Message Sent!';
+                btn.style.background = 'linear-gradient(135deg, #00ff88, #00f5ff)';
 
+                // 3 सेकंड बाद बटन को रीसेट करें और मैसेज छुपाएं
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.background = '';
+                    btn.disabled = false;
+                    if (messageDiv) {
+                        messageDiv.style.display = 'none';
+                    }
+                }, 3000);
+
+            } else {
+                // ❌ सर्वर से कोई एरर आया
+                const errorText = await response.text();
+                console.error('Form submission error:', errorText);
+                alert('Oops! Something went wrong. Please try again.');
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+
+        } catch (error) {
+            // ❌ नेटवर्क या कनेक्टिविटी एरर
+            console.error('Network error:', error);
+            alert('Network error. Please check your connection and try again.');
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }
+    });
+}
     // ==================== BACK TO TOP ====================
     initBackToTop() {
         const btn = document.getElementById('back-to-top');
