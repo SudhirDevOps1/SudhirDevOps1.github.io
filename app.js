@@ -603,6 +603,9 @@ class PortfolioApp {
 
         if (!cursor || !cursorDot) return;
 
+        cursor.style.display = 'block';
+        cursorDot.style.display = 'block';
+
         let cursorX = 0, cursorY = 0;
         let dotX = 0, dotY = 0;
 
@@ -612,8 +615,8 @@ class PortfolioApp {
         });
 
         const animateCursor = () => {
-            dotX += (cursorX - dotX) * 0.2;
-            dotY += (cursorY - dotY) * 0.2;
+            dotX += (cursorX - dotX) * 0.15;
+            dotY += (cursorY - dotY) * 0.15;
 
             cursor.style.left = cursorX + 'px';
             cursor.style.top = cursorY + 'px';
@@ -624,10 +627,13 @@ class PortfolioApp {
         };
         animateCursor();
 
-        const hoverElements = document.querySelectorAll('a, button, .project-card, .skill-item, .service-card, .vlog-card');
-        hoverElements.forEach(el => {
-            el.addEventListener('mouseenter', () => cursor.classList.add('hover'));
-            el.addEventListener('mouseleave', () => cursor.classList.remove('hover'));
+        // Fix: use event delegation so dynamically added cards also get cursor effect
+        const hoverSelectors = 'a, button, .project-card, .skill-item, .service-card, .vlog-card, .blog-card, .achievement-card, .timeline-dot';
+        document.addEventListener('mouseover', (e) => {
+            if (e.target.closest(hoverSelectors)) cursor.classList.add('hover');
+        });
+        document.addEventListener('mouseout', (e) => {
+            if (e.target.closest(hoverSelectors)) cursor.classList.remove('hover');
         });
 
         document.addEventListener('mousedown', () => cursor.classList.add('click'));
@@ -852,19 +858,22 @@ class PortfolioApp {
         // Counter animation
         gsap.utils.toArray('.highlight-number').forEach(num => {
             const target = parseInt(num.dataset.target) || parseInt(num.textContent);
-            const suffix = num.textContent.replace(/[0-9]/g, '');
+            const suffix = num.textContent.replace(/[0-9.,+K]+/g, '').trim();
+            const obj = { val: 0 };
 
-            gsap.from(num, {
-                textContent: 0,
+            gsap.to(obj, {
+                val: target,
                 duration: 2,
                 ease: 'power1.out',
-                snap: { textContent: 1 },
                 scrollTrigger: {
                     trigger: num,
                     start: 'top 85%'
                 },
                 onUpdate: function () {
-                    num.textContent = Math.ceil(num.textContent) + suffix;
+                    num.textContent = Math.ceil(obj.val) + suffix;
+                },
+                onComplete: function () {
+                    num.textContent = target + suffix;
                 }
             });
         });
@@ -913,7 +922,9 @@ class PortfolioApp {
                 projects.forEach(project => {
                     if (filter === 'all' || project.dataset.category === filter) {
                         project.style.display = '';
-                        gsap.from(project, { opacity: 0, y: 30, duration: 0.4 });
+                        if (typeof gsap !== 'undefined') {
+                            gsap.fromTo(project, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.4 });
+                        }
                     } else {
                         project.style.display = 'none';
                     }
@@ -937,7 +948,9 @@ class PortfolioApp {
                 vlogs.forEach(vlog => {
                     if (filter === 'all' || vlog.dataset.category === filter) {
                         vlog.style.display = '';
-                        gsap.from(vlog, { opacity: 0, y: 30, duration: 0.4 });
+                        if (typeof gsap !== 'undefined') {
+                            gsap.fromTo(vlog, { opacity: 0, y: 30 }, { opacity: 1, y: 0, duration: 0.4 });
+                        }
                     } else {
                         vlog.style.display = 'none';
                     }
@@ -950,26 +963,8 @@ class PortfolioApp {
     initVideoModal() {
         const modal = document.getElementById('video-modal');
         const modalContent = modal?.querySelector('.video-modal-content');
-        const closeBtn = modal?.querySelector('.video-modal-close');
 
-        document.querySelectorAll('.vlog-play-btn').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const videoId = btn.dataset.video;
-                if (modal && modalContent) {
-                    modalContent.innerHTML = `
-                        <button class="video-modal-close"><i class="fas fa-times"></i></button>
-                        <iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                            allowfullscreen></iframe>
-                    `;
-                    modal.classList.add('active');
-                    document.body.style.overflow = 'hidden';
-
-                    modal.querySelector('.video-modal-close')?.addEventListener('click', closeModal);
-                }
-            });
-        });
-
+        // Fix: define closeModal BEFORE it is referenced
         const closeModal = () => {
             if (modal) {
                 modal.classList.remove('active');
@@ -978,10 +973,31 @@ class PortfolioApp {
             }
         };
 
+        document.querySelectorAll('.vlog-play-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const videoId = btn.dataset.video;
+                if (modal && modalContent) {
+                    modalContent.innerHTML = `
+                        <button class="video-modal-close" aria-label="Close video"><i class="fas fa-times"></i></button>
+                        <iframe src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowfullscreen
+                            title="YouTube video player"></iframe>
+                    `;
+                    modal.classList.add('active');
+                    document.body.style.overflow = 'hidden';
+                    // Attach close button after innerHTML is set
+                    modalContent.querySelector('.video-modal-close')?.addEventListener('click', closeModal);
+                }
+            });
+        });
+
+        // Close on backdrop click
         modal?.addEventListener('click', (e) => {
             if (e.target === modal) closeModal();
         });
 
+        // Close on Escape key
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') closeModal();
         });

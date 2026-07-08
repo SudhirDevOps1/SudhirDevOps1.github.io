@@ -36,10 +36,8 @@ const CONFIG = {
             "BCA Student",
             "Full Stack Developer",
             "UI/UX Designer",
-            
             "Tech Enthusiast",
-            "Freelancer",
-            
+            "Freelancer"
         ],
         typingSpeed: 100,
         deletingSpeed: 50,
@@ -47,7 +45,6 @@ const CONFIG = {
         tagline: "Passionate about building innovative digital experiences with modern technologies. Transforming ideas into reality through code and creativity.",
         resumeLink: "https://drive.google.com/file/d/your-resume-id/view",
         resumeText: "Download Resume",
-        backgroundVideo: "Pagal - SUNANDA SHARMA (HD VIdeo) ｜ Sonu Sood ｜ Latest Punjabi Song 2023 ｜ New Punjabi Song 2023.mp4", // Optional: Add video URL for background
         showParticles: true
     },
 
@@ -81,8 +78,7 @@ const CONFIG = {
             "🎮 Gamer at Heart",
             "📚 Lifelong Learner",
             "🎵 Music Lover",
-            "🎵 coder"
-
+            "💻 Code Addict"
         ]
     },
 
@@ -537,7 +533,7 @@ const CONFIG = {
         enableCursor: true,
         enableParallax: true,
         enableScrollAnimations: true,
-        particleCount: 2000,
+        particleCount: 800,
         scrollAnimationDuration: 0.8,
         typingCursor: "|"
     }
