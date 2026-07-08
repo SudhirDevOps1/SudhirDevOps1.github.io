@@ -363,6 +363,9 @@
           required
         ></textarea>
       </div>
+      <!-- 🛡️ Honeypot anti-spam field (ApnaForm required) — hidden from real users -->
+      <input name="website" type="text" tabindex="-1" autocomplete="off" style="display:none !important; position:absolute; left:-9999px;" aria-hidden="true" />
+
       <button type="submit" class="submit-btn">
         <i class="fas fa-paper-plane"></i> Send Message
       </button>
