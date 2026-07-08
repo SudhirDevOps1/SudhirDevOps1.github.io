@@ -1182,26 +1182,64 @@ class PortfolioApp {
             btn.disabled = true;
             if (messageDiv) messageDiv.style.display = 'none';
 
-            // Build URLSearchParams (works better with CORS than raw FormData)
+            // URLSearchParams = application/x-www-form-urlencoded
+            // This is a CORS "simple request" — NO preflight needed ✅
             const params = new URLSearchParams();
             new FormData(form).forEach((val, key) => params.append(key, val));
 
             try {
-                // Primary: try with no-cors (avoids CORS preflight — opaque response)
-                await fetch(form.action, {
+                const response = await fetch(form.action, {
                     method: 'POST',
-                    mode: 'no-cors',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                     body: params.toString()
                 });
 
-                // no-cors always "succeeds" at network level — show success optimistically
-                showSuccess(btn, originalText);
+                let data = null;
+                try { data = await response.json(); } catch (_) {}
+
+                if (response.ok) {
+                    // ✅ Real success from ApnaForm server
+                    if (messageDiv) {
+                        messageDiv.style.display = 'block';
+                        messageDiv.style.background = 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,245,255,0.1))';
+                        messageDiv.style.border = '1px solid rgba(0,255,136,0.4)';
+                        messageDiv.style.color = '#00ff88';
+                        messageDiv.style.borderRadius = '10px';
+                        messageDiv.style.padding = '14px';
+                        messageDiv.style.textAlign = 'center';
+                        const idText = data?.id ? ` (ID: ${data.id})` : '';
+                        messageDiv.textContent = `✅ Message sent successfully! I'll get back to you soon.${idText}`;
+                    }
+                    form.reset();
+                    btn.innerHTML = '<i class="fas fa-check"></i> Sent!';
+                    btn.style.background = 'linear-gradient(135deg, #00ff88, #00f5ff)';
+                    setTimeout(() => {
+                        btn.innerHTML = originalText;
+                        btn.style.background = '';
+                        btn.disabled = false;
+                        if (messageDiv) messageDiv.style.display = 'none';
+                    }, 5000);
+
+                } else {
+                    // ❌ Server returned error
+                    const errMsg = data?.message || data?.error || `Server error (${response.status})`;
+                    showError(btn, originalText, errMsg);
+                }
 
             } catch (error) {
-                console.error('Form submission error:', error);
-                // Last resort: show error inline, no alert popup
-                showError(btn, originalText, 'Could not send message. Please check your internet and try again.');
+                // Network / CORS failure — fallback to no-cors silent send
+                console.warn('Regular fetch failed, falling back to no-cors:', error);
+                try {
+                    await fetch(form.action, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        body: new URLSearchParams(new FormData(form)).toString()
+                    });
+                    showSuccess(btn, originalText);
+                } catch (err2) {
+                    console.error('All fetch attempts failed:', err2);
+                    showError(btn, originalText, 'Could not send message. Please check your internet and try again.');
+                }
             }
         });
     }
