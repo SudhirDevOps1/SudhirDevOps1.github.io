@@ -225,34 +225,155 @@ class PortfolioApp {
         `).join('');
     }
 
-    populateProjects() {
+    // ==================== GITHUB LANGUAGE COLORS ====================
+    getLanguageColor(lang) {
+        const colors = {
+            'JavaScript': '#f1e05a', 'TypeScript': '#3178c6', 'HTML': '#e34c26',
+            'CSS': '#563d7c', 'Python': '#3572A5', 'Java': '#b07219',
+            'C++': '#f34b7d', 'C': '#555555', 'C#': '#239120',
+            'PHP': '#4F5D95', 'Ruby': '#701516', 'Go': '#00ADD8',
+            'Rust': '#dea584', 'Swift': '#ffac45', 'Kotlin': '#A97BFF',
+            'Shell': '#89e051', 'Vue': '#41b883', 'Dart': '#00B4AB',
+            'Jupyter Notebook': '#DA5B0B', 'SCSS': '#c6538c'
+        };
+        return colors[lang] || '#8b949e';
+    }
+
+    // ==================== TIME AGO HELPER ====================
+    timeAgo(dateStr) {
+        const diff = (Date.now() - new Date(dateStr)) / 1000;
+        if (diff < 3600) return `${Math.floor(diff/60)}m ago`;
+        if (diff < 86400) return `${Math.floor(diff/3600)}h ago`;
+        if (diff < 2592000) return `${Math.floor(diff/86400)}d ago`;
+        if (diff < 31536000) return `${Math.floor(diff/2592000)}mo ago`;
+        return `${Math.floor(diff/31536000)}y ago`;
+    }
+
+    // ==================== POPULATE PROJECTS (GitHub API) ====================
+    async populateProjects() {
         const container = document.getElementById('projects-container');
+        const filterSection = document.querySelector('.projects-filter');
         if (!container) return;
 
-        container.innerHTML = CONFIG.projects.map(project => `
-            <div class="project-card ${project.featured ? 'featured' : ''}" data-category="${project.category}">
-                <div class="project-image-container">
-                    <img src="${project.image}" alt="${project.title}" class="project-image" loading="lazy">
-                    <div class="project-overlay">
-                        <div class="project-links">
-                            <a href="${project.liveUrl}" class="project-link live" target="_blank" rel="noopener">
-                                <i class="fas fa-external-link-alt"></i> Live
-                            </a>
-                            <a href="${project.codeUrl}" class="project-link code" target="_blank" rel="noopener">
-                                <i class="fab fa-github"></i> Code
-                            </a>
-                        </div>
-                    </div>
-                </div>
+        const username = 'SudhirDevOps1';
+
+        // Hide category filters (not needed for live repos)
+        if (filterSection) filterSection.style.display = 'none';
+
+        // Show API badge above container
+        const section = document.getElementById('projects');
+        const sectionHeader = section?.querySelector('.section-header');
+        if (sectionHeader && !sectionHeader.querySelector('.github-api-badge')) {
+            const badge = document.createElement('div');
+            badge.style.textAlign = 'center';
+            badge.innerHTML = `<span class="github-api-badge"><i class="fab fa-github"></i> Live from GitHub API</span>`;
+            sectionHeader.appendChild(badge);
+        }
+
+        // Show 6 shimmer skeleton cards while loading
+        container.innerHTML = Array(6).fill('').map(() => `
+            <div class="project-card loading-skeleton">
+                <div class="skeleton-img"></div>
                 <div class="project-content">
-                    <h3 class="project-title">${project.title}</h3>
-                    <p class="project-desc">${project.description}</p>
-                    <div class="project-tech">
-                        ${project.techStack.map(tech => `<span class="tech-tag">${tech}</span>`).join('')}
-                    </div>
+                    <div class="skeleton-line" style="width:60%"></div>
+                    <div class="skeleton-line" style="width:90%"></div>
+                    <div class="skeleton-line" style="width:75%"></div>
                 </div>
             </div>
         `).join('');
+
+        try {
+            const res = await fetch(`https://api.github.com/users/${username}/repos?sort=updated&per_page=100&type=public`);
+            if (!res.ok) throw new Error('GitHub API error');
+            const repos = await res.json();
+
+            // Filter: skip forks, skip profile readme repo, sort by stars then updated
+            const filtered = repos
+                .filter(r => !r.fork && r.name.toLowerCase() !== username.toLowerCase())
+                .sort((a, b) => (b.stargazers_count - a.stargazers_count) || (new Date(b.updated_at) - new Date(a.updated_at)));
+
+            if (!filtered.length) {
+                container.innerHTML = `
+                    <div class="github-empty-state">
+                        <i class="fab fa-github"></i>
+                        <p>No public repositories found.</p>
+                    </div>`;
+                return;
+            }
+
+            container.innerHTML = filtered.map(repo => {
+                const lang = repo.language || 'Code';
+                const langColor = this.getLanguageColor(lang);
+                const desc = repo.description || 'No description provided.';
+                const updated = this.timeAgo(repo.updated_at);
+                const topics = (repo.topics || []).slice(0, 4);
+
+                // Choose an Unsplash image based on language
+                const imgMap = {
+                    'JavaScript': 'https://images.unsplash.com/photo-1627398242454-45a1465c2479?w=600&h=300&fit=crop',
+                    'TypeScript': 'https://images.unsplash.com/photo-1599507593499-a3f7d7d97667?w=600&h=300&fit=crop',
+                    'HTML': 'https://images.unsplash.com/photo-1507721999472-8ed4421c4af2?w=600&h=300&fit=crop',
+                    'CSS': 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=600&h=300&fit=crop',
+                    'Python': 'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?w=600&h=300&fit=crop',
+                    'Java': 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?w=600&h=300&fit=crop',
+                    'default': 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?w=600&h=300&fit=crop'
+                };
+                const img = imgMap[lang] || imgMap['default'];
+
+                return `
+                <div class="project-card" data-category="github">
+                    <div class="project-image-container">
+                        <img src="${img}" alt="${repo.name}" class="project-image" loading="lazy">
+                        <div class="project-overlay">
+                            <div class="project-links">
+                                ${repo.homepage ? `<a href="${repo.homepage}" class="project-link live" target="_blank" rel="noopener"><i class="fas fa-external-link-alt"></i> Live</a>` : ''}
+                                <a href="${repo.html_url}" class="project-link code" target="_blank" rel="noopener">
+                                    <i class="fab fa-github"></i> View Code
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="project-content">
+                        <h3 class="project-title">${repo.name.replace(/-/g,' ').replace(/_/g,' ')}</h3>
+                        <p class="project-desc">${desc}</p>
+                        <div class="project-tech">
+                            ${topics.map(t => `<span class="tech-tag">${t}</span>`).join('')}
+                            ${!topics.length ? `<span class="tech-tag">${lang}</span>` : ''}
+                        </div>
+                        <div class="project-stats">
+                            <span><i class="fas fa-star" style="color:#f1c40f"></i> ${repo.stargazers_count}</span>
+                            <span><i class="fas fa-code-branch" style="color:#00f5ff"></i> ${repo.forks_count}</span>
+                            <span>
+                                <span class="project-lang-dot" style="background:${langColor}"></span>
+                                ${lang}
+                            </span>
+                        </div>
+                        <div class="project-updated">
+                            <i class="fas fa-clock"></i> Updated ${updated}
+                        </div>
+                    </div>
+                </div>`;
+            }).join('');
+
+            // Re-init scroll animations for new cards
+            if (typeof gsap !== 'undefined' && typeof ScrollTrigger !== 'undefined') {
+                gsap.utils.toArray('.project-card').forEach((card, i) => {
+                    gsap.from(card, {
+                        opacity: 0, y: 60, duration: 0.6,
+                        delay: Math.min(i * 0.08, 0.6),
+                        scrollTrigger: { trigger: card, start: 'top 92%' }
+                    });
+                });
+            }
+
+        } catch (err) {
+            console.error('GitHub API error:', err);
+            container.innerHTML = `
+                <div class="github-empty-state">
+                    <i class="fab fa-github"></i>
+                    <p>Could not load repositories. <a href="https://github.com/${username}" target="_blank" style="color:var(--primary)">Visit GitHub →</a></p>
+                </div>`;
+        }
     }
 
     populateVlogs() {
@@ -284,17 +405,18 @@ class PortfolioApp {
 
         if (blogContainer) {
             blogContainer.innerHTML = CONFIG.blogPosts.map(post => `
-                <a href="${post.url}" class="blog-card">
+                <a href="${post.url}" class="blog-card" target="${post.url !== '#' ? '_blank' : '_self'}" rel="noopener">
                     <div class="blog-image">
                         <img src="${post.image}" alt="${post.title}" loading="lazy">
                     </div>
                     <div class="blog-content">
-                        <span class="blog-category">${post.category}</span>
+                        <span class="blog-category"><i class="fas fa-tag"></i> ${post.category}</span>
                         <h4 class="blog-title">${post.title}</h4>
                         <p class="blog-excerpt">${post.excerpt}</p>
                         <div class="blog-meta">
-                            <span>${post.date}</span>
-                            <span>${post.readTime}</span>
+                            <span><i class="fas fa-calendar-alt"></i> ${post.date}</span>
+                            <span><i class="fas fa-clock"></i> ${post.readTime}</span>
+                            <span class="blog-read-more">Read <i class="fas fa-arrow-right"></i></span>
                         </div>
                     </div>
                 </a>
@@ -1008,67 +1130,78 @@ class PortfolioApp {
         const form = document.getElementById('contact-form');
         const messageDiv = document.getElementById('form-message');
 
-        // अगर फॉर्म मौजूद नहीं है तो आगे न बढ़ें
         if (!form) return;
 
+        // ✅ Success UI helper
+        const showSuccess = (btn, originalText) => {
+            if (messageDiv) {
+                messageDiv.style.display = 'block';
+                messageDiv.style.background = 'linear-gradient(135deg, rgba(0,255,136,0.15), rgba(0,245,255,0.1))';
+                messageDiv.style.border = '1px solid rgba(0,255,136,0.4)';
+                messageDiv.style.color = '#00ff88';
+                messageDiv.style.borderRadius = '10px';
+                messageDiv.style.padding = '14px';
+                messageDiv.style.textAlign = 'center';
+                messageDiv.textContent = '✅ Message sent successfully! I\'ll get back to you soon.';
+            }
+            form.reset();
+            btn.innerHTML = '<i class="fas fa-check"></i> Sent!';
+            btn.style.background = 'linear-gradient(135deg, #00ff88, #00f5ff)';
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.style.background = '';
+                btn.disabled = false;
+                if (messageDiv) messageDiv.style.display = 'none';
+            }, 4000);
+        };
+
+        // ❌ Error UI helper (no ugly alert popups)
+        const showError = (btn, originalText, msg) => {
+            if (messageDiv) {
+                messageDiv.style.display = 'block';
+                messageDiv.style.background = 'rgba(255,50,50,0.1)';
+                messageDiv.style.border = '1px solid rgba(255,50,50,0.4)';
+                messageDiv.style.color = '#ff6b6b';
+                messageDiv.style.borderRadius = '10px';
+                messageDiv.style.padding = '14px';
+                messageDiv.style.textAlign = 'center';
+                messageDiv.textContent = '❌ ' + msg;
+                setTimeout(() => { messageDiv.style.display = 'none'; }, 5000);
+            }
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        };
+
         form.addEventListener('submit', async (e) => {
-            e.preventDefault(); // पेज को रिफ्रेश होने से रोकें
+            e.preventDefault();
 
             const btn = form.querySelector('.submit-btn');
             const originalText = btn.innerHTML;
 
-            // बटन को "लोडिंग" स्टेट में करें
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
             btn.disabled = true;
+            if (messageDiv) messageDiv.style.display = 'none';
 
-            // फॉर्म डेटा इकट्ठा करें
-            const formData = new FormData(form);
+            // Build URLSearchParams (works better with CORS than raw FormData)
+            const params = new URLSearchParams();
+            new FormData(form).forEach((val, key) => params.append(key, val));
 
             try {
-                // 📤 FormZero पर डेटा भेजें
-                const response = await fetch(form.action, {
+                // Primary: try with no-cors (avoids CORS preflight — opaque response)
+                await fetch(form.action, {
                     method: 'POST',
-                    body: formData
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params.toString()
                 });
 
-                if (response.ok) {
-                    // ✅ सफलतापूर्वक भेजा गया
-                    if (messageDiv) {
-                        messageDiv.style.display = 'block';
-                    }
-
-                    // फॉर्म खाली करें (Reset)
-                    form.reset();
-
-                    // बटन को सफलता वाला स्टेट दिखाएं
-                    btn.innerHTML = '<i class="fas fa-check"></i> Message Sent!';
-                    btn.style.background = 'linear-gradient(135deg, #00ff88, #00f5ff)';
-
-                    // 3 सेकंड बाद बटन को रीसेट करें और मैसेज छुपाएं
-                    setTimeout(() => {
-                        btn.innerHTML = originalText;
-                        btn.style.background = '';
-                        btn.disabled = false;
-                        if (messageDiv) {
-                            messageDiv.style.display = 'none';
-                        }
-                    }, 3000);
-
-                } else {
-                    // ❌ सर्वर से कोई एरर आया (जैसे 404, 500)
-                    const errorText = await response.text();
-                    console.error('Form submission error:', errorText);
-                    alert('Oops! Something went wrong. Please try again.');
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }
+                // no-cors always "succeeds" at network level — show success optimistically
+                showSuccess(btn, originalText);
 
             } catch (error) {
-                // ❌ नेटवर्क या कनेक्टिविटी एरर (इंटरनेट बंद होना, CORS, आदि)
-                console.error('Network error:', error);
-                alert('Network error. Please check your connection and try again.');
-                btn.innerHTML = originalText;
-                btn.disabled = false;
+                console.error('Form submission error:', error);
+                // Last resort: show error inline, no alert popup
+                showError(btn, originalText, 'Could not send message. Please check your internet and try again.');
             }
         });
     }
